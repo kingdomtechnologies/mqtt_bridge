@@ -5,6 +5,8 @@ import inject
 import paho.mqtt.client as mqtt
 import rospy
 
+import datetime, socket
+
 from .util import lookup_object, extract_values, populate_instance
 
 
@@ -42,6 +44,7 @@ class RosToMqttBridge(Bridge):
     """
 
     def __init__(self, topic_from: str, topic_to: str, msg_type: rospy.Message, frequency: Optional[float] = None):
+        self.device = str(socket.gethostname())
         self._topic_from = topic_from
         self._topic_to = self._extract_private_path(topic_to)
         self._last_published = rospy.get_time()
@@ -56,7 +59,13 @@ class RosToMqttBridge(Bridge):
             self._last_published = now
 
     def _publish(self, msg: rospy.Message):
-        payload = self._serialize(extract_values(msg))
+        payload = extract_values(msg) #self._serialize(extract_values(msg))
+        date_time = str(datetime.datetime.now())
+        header = {"device_id": self.device, "date_time": date_time, "site_id": "West of Scotland Science Park"} # TODO: get the site from somewhere
+        header.update(payload)
+        payload = self._serialize(header)
+
+        # TODO: Might be better to generate the MQTT topic name here using the device_id and site_id from inside the message, rather than having the redundant config file
         self._mqtt_client.publish(topic=self._topic_to, payload=payload)
 
 
