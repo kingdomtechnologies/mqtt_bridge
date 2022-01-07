@@ -61,7 +61,7 @@ class RosToMqttBridge(Bridge):
     def _publish(self, msg: rospy.Message):
         payload = extract_values(msg) #self._serialize(extract_values(msg))
         date_time = str(datetime.datetime.now())
-        header = {"device_id": self.device, "date_time": date_time, "site_id": "West of Scotland Science Park"} # TODO: get the site from somewhere
+        header = {"device_id": self.device, "date_time": date_time, "site_id": "West of Scotland Science Park", "ros_topic": self._topic_from} # TODO: get the site from somewhere
         header.update(payload)
         payload = self._serialize(header)
 
