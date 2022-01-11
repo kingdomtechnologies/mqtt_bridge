@@ -44,9 +44,20 @@ class RosToMqttBridge(Bridge):
     """
 
     def __init__(self, topic_from: str, topic_to: str, msg_type: rospy.Message, frequency: Optional[float] = None):
-        self.device = str(socket.gethostname())
+        self.device_id = str(socket.gethostname())
+        self.site_id = "WoSSP" # TODO: get the site from somewhere
         self._topic_from = topic_from
-        self._topic_to = self._extract_private_path(topic_to)
+
+        #self._topic_to = self._extract_private_path(topic_to)
+        if topic_to.startswith('~/'):
+            self._topic_to = f"/kingdom/{self.site_id}/{self.device_id}/{topic_to[2:]}"
+        elif topic_to.startswith('/'):
+            self._topic_to = f"/kingdom/{self.site_id}/{self.device_id}/{topic_to[1:]}"
+        else:
+            self._topic_to = f"/kingdom/{self.site_id}/{self.device_id}/{topic_to}"
+
+        rospy.loginfo(f"Ready to publishing MQTT topic {self._topic_to}")
+
         self._last_published = rospy.get_time()
         self._interval = 0 if frequency is None else 1.0 / frequency
         rospy.Subscriber(topic_from, msg_type, self._callback_ros)
@@ -61,11 +72,10 @@ class RosToMqttBridge(Bridge):
     def _publish(self, msg: rospy.Message):
         payload = extract_values(msg) #self._serialize(extract_values(msg))
         date_time = str(datetime.datetime.now())
-        header = {"device_id": self.device, "date_time": date_time, "site_id": "West of Scotland Science Park", "ros_topic": self._topic_from} # TODO: get the site from somewhere
+        header = {"device_id": self.device_id, "date_time": date_time, "site_id": self.site_id, "ros_topic": self._topic_from}
         header.update(payload)
         payload = self._serialize(header)
 
-        # TODO: Might be better to generate the MQTT topic name here using the device_id and site_id from inside the message, rather than having the redundant config file
         self._mqtt_client.publish(topic=self._topic_to, payload=payload)
 
 
