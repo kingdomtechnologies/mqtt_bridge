@@ -45,7 +45,9 @@ class RosToMqttBridge(Bridge):
 
     def __init__(self, topic_from: str, topic_to: str, msg_type: rospy.Message, frequency: Optional[float] = None):
         self.device_id = str(socket.gethostname())
-        self.site_id = "WoSSP" # TODO: get the site from somewhere
+
+        if rospy.has_param("/site/site_id"):
+            self.site_id = rospy.get_param("/site/site_id") # "WoSSP"
         self._topic_from = topic_from
 
         #self._topic_to = self._extract_private_path(topic_to)
