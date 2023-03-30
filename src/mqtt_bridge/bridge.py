@@ -75,7 +75,7 @@ class RosToMqttBridge(Bridge):
         self._interval = 0 if frequency is None else 1.0 / frequency
         rospy.Subscriber(topic_from, msg_type, self._callback_ros)
         
-        self.rate = rospy.Rate(1)
+        self.rate = rospy.Rate(0.1)
         self.param_thread = Thread(target=self.new_site_id_handler, daemon=True)
         self.param_thread.start()
         self.halt_publishing = False
@@ -89,7 +89,7 @@ class RosToMqttBridge(Bridge):
                 self.halt_publishing = True
                 prev_site_id = self.site_id
                 self.site_id = self.site_id_handler.param
-                msg = f"Handling a new site_id: changing from {prev_site_id} to {self.site_id}"
+                msg = f"[{self.topic_to}]: Handling a new site_id: changing from {prev_site_id} to {self.site_id}"
                 self.notifier.notify_warn(msg)
 
 
@@ -102,8 +102,7 @@ class RosToMqttBridge(Bridge):
 
                 self.halt_publishing = False
 
-            time.sleep(2)
-            rospy.sleep(2.)
+            self.rate.sleep()
 
     def _callback_ros(self, msg: rospy.Message):
         rospy.logdebug("ROS received from {}".format(self._topic_from))
