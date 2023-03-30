@@ -75,9 +75,10 @@ class RosToMqttBridge(Bridge):
         self._interval = 0 if frequency is None else 1.0 / frequency
         rospy.Subscriber(topic_from, msg_type, self._callback_ros)
         
-        self.param_thread = Thread(target=self.new_site_id_handler, daemon=True)
         self.rate = rospy.Rate(1)
+        self.param_thread = Thread(target=self.new_site_id_handler, daemon=True)
         self.param_thread.start()
+        self.halt_publishing = False
 
 
     def new_site_id_handler(self):
@@ -85,7 +86,7 @@ class RosToMqttBridge(Bridge):
         while not rospy.is_shutdown():
             rospy.logdebug(f"Param Changed: {self.site_id_handler.param_changed}")
             if self.site_id_handler.read_params():
-
+                self.halt_publishing = True
                 prev_site_id = self.site_id
                 self.site_id = self.site_id_handler.param
                 msg = f"Handling a new site_id: changing from {prev_site_id} to {self.site_id}"
@@ -98,6 +99,9 @@ class RosToMqttBridge(Bridge):
                     self._topic_to = f"/kingdom/{self.site_id}/{self.device_id}/{self.topic_to[1:]}"
                 else:
                     self._topic_to = f"/kingdom/{self.site_id}/{self.device_id}/{self.topic_to}"
+
+                self.halt_publishing = False
+
             time.sleep(2)
             rospy.sleep(2.)
 
@@ -143,7 +147,7 @@ class MqttToRosBridge(Bridge):
         rospy.logdebug("MQTT received from {}".format(mqtt_msg.topic))
         now = rospy.get_time()
 
-        if self._interval is None or now - self._last_published >= self._interval:
+        if self._interval is None or now - self._last_published >= self._interval and not self.halt_publishing:
             try:
                 ros_msg = self._create_ros_message(mqtt_msg)
                 self._publisher.publish(ros_msg)
