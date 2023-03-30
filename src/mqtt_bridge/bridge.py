@@ -5,9 +5,12 @@ import inject
 import paho.mqtt.client as mqtt
 import rospy
 
-import datetime, socket
+import datetime, socket, time
 
 from .util import lookup_object, extract_values, populate_instance
+from kingdom_params_handler import ParamsHandler
+from threading import Thread, Event, Lock
+from kingdom_telegram import Notifier
 
 
 def create_bridge(factory: Union[str, "Bridge"], msg_type: Union[str, Type[rospy.Message]], topic_from: str,
@@ -46,21 +49,25 @@ class RosToMqttBridge(Bridge):
     def __init__(self, topic_from: str, topic_to: str, msg_type: rospy.Message, frequency: Optional[float] = None):
         self.device_id = str(socket.gethostname())
 
+        # Instantiate notifier and associated variables
+        self.notifier = Notifier()
+
         self.site_id_handler = ParamsHandler("site/site_id")
         while self.site_id_handler.param is None:
             rospy.loginfo_throttle(60, "Waiting for configs to be loaded")
         
         self.site_id = self.site_id_handler.read_params()
-        
+
+        self.topic_to = topic_to
         self._topic_from = topic_from
 
         #self._topic_to = self._extract_private_path(topic_to)
-        if topic_to.startswith('~/'):
-            self._topic_to = f"/kingdom/{self.site_id}/{self.device_id}/{topic_to[2:]}"
-        elif topic_to.startswith('/'):
-            self._topic_to = f"/kingdom/{self.site_id}/{self.device_id}/{topic_to[1:]}"
+        if self.topic_to.startswith('~/'):
+            self._topic_to = f"/kingdom/{self.site_id}/{self.device_id}/{self.topic_to[2:]}"
+        elif self.topic_to.startswith('/'):
+            self._topic_to = f"/kingdom/{self.site_id}/{self.device_id}/{self.topic_to[1:]}"
         else:
-            self._topic_to = f"/kingdom/{self.site_id}/{self.device_id}/{topic_to}"
+            self._topic_to = f"/kingdom/{self.site_id}/{self.device_id}/{self.topic_to}"
 
         rospy.loginfo(f"Ready to publishing MQTT topic {self._topic_to}")
 
@@ -70,28 +77,29 @@ class RosToMqttBridge(Bridge):
         
         self.param_thread = Thread(target=self.new_site_id_handler, daemon=True)
         self.rate = rospy.Rate(1)
+        self.param_thread.start()
 
 
     def new_site_id_handler(self):
-        
-        if self.site_id_handler.read_params():
 
-            prev_site_id = self.site_id
-            self.site_id = self.cor_server_param_handler.param
-            msg = f"Handling a new site_id: changing from {prev_site_id} to {self.site_id}"
-            self.notifier.notify_warn(msg)
-            self.logger.log_warning(msg)
+        while not rospy.is_shutdown():
+            rospy.logdebug(f"Param Changed: {self.site_id_handler.param_changed}")
+            if self.site_id_handler.read_params():
 
-            self._topic_from = topic_from
+                prev_site_id = self.site_id
+                self.site_id = self.site_id_handler.param
+                msg = f"Handling a new site_id: changing from {prev_site_id} to {self.site_id}"
+                self.notifier.notify_warn(msg)
 
-            if topic_to.startswith('~/'):
-                self._topic_to = f"/kingdom/{self.site_id}/{self.device_id}/{topic_to[2:]}"
-            elif topic_to.startswith('/'):
-                self._topic_to = f"/kingdom/{self.site_id}/{self.device_id}/{topic_to[1:]}"
-            else:
-                self._topic_to = f"/kingdom/{self.site_id}/{self.device_id}/{topic_to}"
 
-        self.rate.sleep()
+                if self.topic_to.startswith('~/'):
+                    self._topic_to = f"/kingdom/{self.site_id}/{self.device_id}/{self.topic_to[2:]}"
+                elif self.topic_to.startswith('/'):
+                    self._topic_to = f"/kingdom/{self.site_id}/{self.device_id}/{self.topic_to[1:]}"
+                else:
+                    self._topic_to = f"/kingdom/{self.site_id}/{self.device_id}/{self.topic_to}"
+            time.sleep(2)
+            rospy.sleep(2.)
 
     def _callback_ros(self, msg: rospy.Message):
         rospy.logdebug("ROS received from {}".format(self._topic_from))
