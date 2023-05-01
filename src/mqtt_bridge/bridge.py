@@ -55,7 +55,8 @@ class RosToMqttBridge(Bridge):
         self.site_id_handler = ParamsHandler("site/site_id")
         while self.site_id_handler.param is None:
             rospy.loginfo_throttle(60, "Waiting for configs to be loaded")
-        
+            time.sleep(1.0)
+            
         self.site_id = self.site_id_handler.read_params()
 
         self.topic_to = topic_to
