@@ -21,18 +21,17 @@ s = '{"time": 1665163918.576645, "name": "battery_low_preempt", "state": "LogSta
 d = json.loads(s)
 #print(d["success"], d["status"])
 print(d["time"])
-Timer()
 
 fsm_state = FSMState.NotStarted 
 
 def status_callback(msg):
-    global fsm_state
+    global fsm_state, behaviour_pub
     rospy.loginfo("got this msg")
     rospy.loginfo(msg)
-    if msg.args is []:
+    if len(msg.args) == 0:
         rospy.loginfo("FSM got called")
         fsm_state = FSMState.Running
-    elif msg.args[0] is "failed":
+    elif msg.args[0] == "failed":
         rospy.loginfo(f"FSM failed")
         state = FlexbeStates()
         state.time = rospy.Time.now()
@@ -45,7 +44,7 @@ def status_callback(msg):
         state.loglevel = "INFO"
         print(state)
         behaviour_pub.publish(state)
-    elif msg.args[0] is "preempted":
+    elif msg.args[0] == "preempted":
         rospy.loginfo(f"FSM preempted")
         state = FlexbeStates()
         state.time = rospy.Time.now()
