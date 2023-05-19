@@ -26,7 +26,7 @@ fsm_state = FSMState.NotStarted
 
 
 def status_callback(msg):
-    global fsm_state, behaviour_pub
+    global fsm_state, behaviour_pub, fsm_state_pub
     rospy.loginfo("got this msg")
     rospy.loginfo(msg)
     if len(msg.args) == 0:
@@ -102,6 +102,7 @@ def raw_callback(msg):
 
 
 def timer_func():
+    global fsm_state, behaviour_pub
     if fsm_state== FSMState.NotStarted:
         rospy.loginfo("FSM has not started yet.. will publish that on the status processed topic!")         
         state = FlexbeStates()
