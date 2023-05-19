@@ -113,7 +113,7 @@ rospy.loginfo("behaviour process node starting...")
 
 rospy.Subscriber("/flexbe/state_logger", String, raw_callback)
 
-rospy.Subscriber("/flexbe/status", BEStatus, raw_callback)
+rospy.Subscriber("/flexbe/status", BEStatus, status_callback)
 
 Timer(10*60,function=timer_func)
 
