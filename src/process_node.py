@@ -24,6 +24,7 @@ print(d["time"])
 
 fsm_state = FSMState.NotStarted 
 
+
 def status_callback(msg):
     global fsm_state, behaviour_pub
     rospy.loginfo("got this msg")
@@ -31,8 +32,12 @@ def status_callback(msg):
     if len(msg.args) == 0:
         rospy.loginfo("FSM got called")
         fsm_state = FSMState.Running
+        flag = String()
+        flag.data = "Running"
+        fsm_state_pub.publish(flag)
     elif msg.args[0] == "failed":
         rospy.loginfo(f"FSM failed")
+        fsm_state = FSMState.Failed
         state = FlexbeStates()
         state.time = rospy.Time.now()
         state.name = "FSM_failed"
@@ -42,10 +47,13 @@ def status_callback(msg):
         state.duration = "0.001"
         state.logger = "flexbe.events"
         state.loglevel = "INFO"
-        print(state)
         behaviour_pub.publish(state)
+        flag = String()
+        flag.data = "Failed"
+        fsm_state_pub.publish(flag)
     elif msg.args[0] == "preempted":
         rospy.loginfo(f"FSM preempted")
+        fsm_state = FSMState.Preempted
         state = FlexbeStates()
         state.time = rospy.Time.now()
         state.name = "FSM_preempted"
@@ -55,8 +63,10 @@ def status_callback(msg):
         state.duration = "0.001"
         state.logger = "flexbe.events"
         state.loglevel = "INFO"
-        print(state)
         behaviour_pub.publish(state)
+        flag = String()
+        flag.data = "Preempted"
+        fsm_state_pub.publish(flag)
  
 
 def raw_callback(msg):
@@ -118,5 +128,6 @@ rospy.Subscriber("/flexbe/status", BEStatus, status_callback)
 Timer(10*60,function=timer_func)
 
 behaviour_pub = rospy.Publisher('/flexbe/state_logger/processed', FlexbeStates, queue_size=10)
+fsm_state_pub = rospy.Publisher('/FSM/state', String, latching=True, queue_size=10)
 
 rospy.spin()
