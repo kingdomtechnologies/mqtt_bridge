@@ -50,7 +50,7 @@ def status_callback(msg):
             fsm_state = FSMState.Preempted
             state.event = "preemption"
             flag.data = "Preempted"
-        state.duration = "0.001"
+        state.duration = 0.001
         state.logger = "flexbe.events"
         state.loglevel = "INFO"
         fsm_state_pub.publish(flag)
@@ -99,7 +99,7 @@ def timer_func():
         state.state = "LogState"
         state.path = "NOPATH"
         state.event = "not_started"
-        state.duration = "0.001"
+        state.duration = 0.001
         state.logger = "flexbe.events"
         state.loglevel = "INFO"
         print(state)
