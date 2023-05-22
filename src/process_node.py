@@ -27,7 +27,7 @@ fsm_state = FSMState.NotStarted
 
 def status_callback(msg):
     global fsm_state, behaviour_pub, fsm_state_pub
-    if "Starting new behavor" in msg.text:
+    if "Starting new behavior" in msg.text:
         rospy.loginfo("FSM behavior started")
         fsm_state = FSMState.Running
         flag = String()
