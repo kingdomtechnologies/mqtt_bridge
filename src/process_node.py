@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from threading import Timer
-
+import time
 import rospy
 from std_msgs.msg import String
 import json
@@ -38,7 +38,7 @@ def status_callback(msg):
         stat = msg.text.split(" ")[-1][:-1] # to avoid the . in the end            
         state = FlexbeStates()
         flag = String()
-        state.time = rospy.Time.now()
+        state.time = time.time()
         state.name = "fsm_finished"
         state.state = "LogState"
         state.path = "NOPATH"
@@ -94,7 +94,7 @@ def timer_func():
     if fsm_state== FSMState.NotStarted:
         rospy.loginfo("FSM has not started yet.. will publish that on the status processed topic!")         
         state = FlexbeStates()
-        state.time = rospy.Time.now()
+        state.time = time.time()
         state.name = "FSM_not_started"
         state.state = "LogState"
         state.path = "NOPATH"
@@ -114,6 +114,7 @@ rospy.Subscriber("/flexbe/state_logger", String, raw_callback)
 
 rospy.Subscriber("/flexbe/log", BehaviorLog, status_callback)
 
+rospy.loginfo("Timer starting now...")
 Timer(10*60,function=timer_func)
 
 behaviour_pub = rospy.Publisher('/flexbe/state_logger/processed', FlexbeStates, queue_size=10)
