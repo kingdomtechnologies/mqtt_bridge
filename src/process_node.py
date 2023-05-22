@@ -6,7 +6,7 @@ import rospy
 from std_msgs.msg import String
 import json
 from kingdom_message_definitions.msg import FlexbeStates
-from flexbe_msgs.msg import BEStatus
+from flexbe_msgs.msg import BehaviorLog
 from enum import Enum
 
 class FSMState(Enum):
@@ -27,47 +27,35 @@ fsm_state = FSMState.NotStarted
 
 def status_callback(msg):
     global fsm_state, behaviour_pub, fsm_state_pub
-    rospy.loginfo("got this msg")
-    rospy.loginfo(msg)
-    if len(msg.args) == 0:
-        rospy.loginfo("FSM got called")
+    if "Starting new behavor" in msg.text:
+        rospy.loginfo("FSM behavior started")
         fsm_state = FSMState.Running
         flag = String()
         flag.data = "Running"
         fsm_state_pub.publish(flag)
-    elif msg.args[0] == "failed":
-        rospy.loginfo(f"FSM failed")
-        fsm_state = FSMState.Failed
+    elif "Behavior execution finished with result" in msg.text:
+        rospy.loginfo(f"FSM finished")
+        stat = msg.text.split(" ")[-1][:-1] # to avoid the . in the end            
         state = FlexbeStates()
+        flag = String()
         state.time = rospy.Time.now()
-        state.name = "FSM_failed"
+        state.name = "fsm_finished"
         state.state = "LogState"
         state.path = "NOPATH"
-        state.event = "failure"
+        if stat == "failed":
+            fsm_state = FSMState.Failed
+            state.event = "failure"
+            flag.data = "Failed"
+        if stat == "preempted":
+            fsm_state = FSMState.Preempted
+            state.event = "preemption"
+            flag.data = "Preempted"
         state.duration = "0.001"
         state.logger = "flexbe.events"
         state.loglevel = "INFO"
-        behaviour_pub.publish(state)
-        flag = String()
-        flag.data = "Failed"
         fsm_state_pub.publish(flag)
-    elif msg.args[0] == "preempted":
-        rospy.loginfo(f"FSM preempted")
-        fsm_state = FSMState.Preempted
-        state = FlexbeStates()
-        state.time = rospy.Time.now()
-        state.name = "FSM_preempted"
-        state.state = "LogState"
-        state.path = "NOPATH"
-        state.event = "preemption"
-        state.duration = "0.001"
-        state.logger = "flexbe.events"
-        state.loglevel = "INFO"
         behaviour_pub.publish(state)
-        flag = String()
-        flag.data = "Preempted"
-        fsm_state_pub.publish(flag)
- 
+
 
 def raw_callback(msg):
     global behaviour_pub
@@ -124,11 +112,11 @@ rospy.loginfo("behaviour process node starting...")
 
 rospy.Subscriber("/flexbe/state_logger", String, raw_callback)
 
-rospy.Subscriber("/flexbe/status", BEStatus, status_callback)
+rospy.Subscriber("/flexbe/log", BehaviorLog, status_callback)
 
 Timer(10*60,function=timer_func)
 
 behaviour_pub = rospy.Publisher('/flexbe/state_logger/processed', FlexbeStates, queue_size=10)
-fsm_state_pub = rospy.Publisher('/FSM/state', String, latching=True, queue_size=10)
+fsm_state_pub = rospy.Publisher('/FSM/state', String, latch=True, queue_size=10)
 
 rospy.spin()
