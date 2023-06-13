@@ -5,7 +5,11 @@ import rospy
 from .bridge import create_bridge
 from .mqtt_client import create_private_path_extractor
 from .util import lookup_object
+import kingdom_definitions as kdef
+from std_msgs.msg import Bool 
+import time
 
+state_pub = None
 
 def create_config(mqtt_client, serializer, deserializer, mqtt_private_path):
     if isinstance(serializer, str):
@@ -23,7 +27,13 @@ def create_config(mqtt_client, serializer, deserializer, mqtt_private_path):
 
 def mqtt_bridge_node():
     # init node
+    global state_pub
     rospy.init_node('mqtt_bridge_node')
+
+    # connection status topic
+    state_pub = rospy.Publisher(kdef.MQTT_BRIDGE_CONNECTION_STATUS_TOPIC_NAME, Bool, queue_size=0,latch=True)
+    time.sleep(1.0)
+    state_pub.publish(False)
 
     # load parameters
     params = rospy.get_param("~", {})
@@ -61,17 +71,26 @@ def mqtt_bridge_node():
     mqtt_client.loop_start()
 
     # register shutdown callback and spin
+    rospy.on_shutdown(_on_disconnect)
     rospy.on_shutdown(mqtt_client.disconnect)
     rospy.on_shutdown(mqtt_client.loop_stop)
     rospy.spin()
 
 
 def _on_connect(client, userdata, flags, response_code):
+    global state_pub
+    state_pub.publish(True)
     rospy.loginfo('MQTT connected')
 
 
 def _on_disconnect(client, userdata, response_code):
+    global state_pub
+    state_pub.publish(False)
     rospy.loginfo('MQTT disconnected')
 
+def _on_shutdown():
+    global state_pub
+    state_pub.publish(False)
+    rospy.loginfo('MQTT on shutdown')
 
 __all__ = ['mqtt_bridge_node']
