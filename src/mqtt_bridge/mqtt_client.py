@@ -1,5 +1,5 @@
 from typing import Dict, Callable
-
+import socket
 import paho.mqtt.client as mqtt
 
 
@@ -7,6 +7,11 @@ def default_mqtt_client_factory(params: Dict) -> mqtt.Client:
     """ MQTT Client factory """
     # create client
     client_params = params.get('client', {})
+
+    # Define mqtt client id as our device hostname
+    client_params['client_id'] = str(socket.gethostname())
+    print(f"Setting client_id as the device hostname: { client_params['client_id'] }")
+    
     client = mqtt.Client(**client_params)
 
     # configure tls
