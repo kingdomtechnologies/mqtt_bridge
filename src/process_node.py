@@ -34,13 +34,15 @@ class fsmStatesMonitorToMQTT():
         self.node_name = "states_monitor_mqtt"
         # self.node_name = "kigndom_behaviour_process"
         self.status = fsmStatesMonitorToMQTTStatus.INITIALISING
+        self.fsm_state_latest = None
+        self.fsm_state_ts = None
         rospy.init_node(self.node_name, anonymous=True)
 
         rospy.loginfo("Starting states monitor MQTT")
 
         self.rp = rospkg.RosPack()
         self.package_path = self.rp.get_path('kingdom_fsm_robot_flexbe_states')
-
+        
         # Load fsm states groups definition
         self.fsm_states_groups = self.load_fsm_states_groups()
         if self.fsm_states_groups is None:
